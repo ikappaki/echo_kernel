@@ -19,8 +19,6 @@ def eval_str(s: str, ctx: compiler.CompilerContext, ns: runtime.Namespace, eof: 
         last = compiler.compile_and_exec_form(form, ctx, ns)
     return last
 
-print(":hi")
-
 opts = {}
 basilisp.init(opts)
 ctx = compiler.CompilerContext(filename="basilisp-kernel", opts=opts)
@@ -28,14 +26,15 @@ eof = object()
 ns = runtime.Namespace.get_or_create(runtime.CORE_NS_SYM)
 
 class EchoKernel(Kernel):
-    implementation = 'Echo'
+    implementation = 'basilisp_kernel'
     implementation_version = '1.0'
-    language = 'no-op'
+    language = 'clojure'
     language_version = '0.1'
     language_info = {
-        'name': 'echo',
+        'name': 'Basilisp',
+        'codemirror-mode': "clojure",
         'mimetype': 'text/plain',
-        'file_extension': '.txt',
+        'file_extension': '.lpy',
     }
     banner = "Echo kernel - as useful as a parrot"
 
@@ -43,7 +42,7 @@ class EchoKernel(Kernel):
                    allow_stdin=False):
         bas_out = StringIO()
         bas_err = StringIO()
-        status = "ok"
+        ret = None
         try:
             with runtime.bindings({
                     runtime.Var.find_safe(sym.symbol("*out*", ns=runtime.CORE_NS)) : bas_out,
@@ -59,6 +58,13 @@ class EchoKernel(Kernel):
                     stream_content = {'name': 'stderr', 'text': bas_err.getvalue()}
                     self.send_response(self.iopub_socket, 'stream', stream_content)
 
+            ret = {'status': 'ok',
+                   # The base class increments the execution count
+                   'execution_count': self.execution_count,
+                   'payload': [],
+                   'user_expressions': {},
+                   }
+
         # except reader.SyntaxError as e:
         #     exc = format_exception(e, reader.SyntaxError, e.__traceback__)
         # except compiler.CompilerException as e:
@@ -69,11 +75,11 @@ class EchoKernel(Kernel):
         except Exception as e:
             stream_content = {'name': 'stderr', 'text': traceback.format_exc()}
             self.send_response(self.iopub_socket, 'stream', stream_content)
-            status = "error"
+            ret = {'status': 'error',
+                   'ename': 'exception',
+                   'evalue': str(e),
+                   'traceback': []
+                   }
 
-        return {'status': status,
-                # The base class increments the execution count
-                'execution_count': self.execution_count,
-                'payload': [],
-                'user_expressions': {},
-               }
+
+        return ret

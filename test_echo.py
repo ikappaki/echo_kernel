@@ -22,14 +22,14 @@ class EchoKernelTests(jkt.KernelTests):
 
     # the name of the language the kernel executes
     # checked against language_info.name in kernel_info_reply
-    language_name = "echo"
+    language_name = "Basilisp"
 
     # the normal file extension (including the leading dot) for this language
     # checked against language_info.file_extension in kernel_info_reply
-    file_extension = ".txt"
+    file_extension = ".lpy"
 
     # code which should write the exact string `hello, world` to STDOUT
-    code_hello_world = "hello, world"
+    code_hello_world = "\"hello, world\""
 
 
 if __name__ == "__main__":
