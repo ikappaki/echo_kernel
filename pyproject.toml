@@ -5,7 +5,7 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "echo-kernel"
+name = "basilisp-kernel"
 dynamic = [
     "version",
 ]
@@ -36,7 +36,7 @@ test = [
 Homepage = "https://github.com/jupyter/echo_kernel"
 
 [tool.hatch.version]
-path = "echo_kernel/__init__.py"
+path = "basilisp_kernel/__init__.py"
 
 # Used to call hatch_build.py
 [tool.hatch.build.hooks.custom]
@@ -44,7 +44,7 @@ path = "echo_kernel/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/echo_kernel",
+    "/basilisp_kernel",
 ]
 
 [tool.hatch.build.targets.wheel.shared-data]

@@ -25,18 +25,18 @@ ctx = compiler.CompilerContext(filename="basilisp-kernel", opts=opts)
 eof = object()
 ns = runtime.Namespace.get_or_create(runtime.CORE_NS_SYM)
 
-class EchoKernel(Kernel):
+class BasilispKernel(Kernel):
     implementation = 'basilisp_kernel'
     implementation_version = '1.0'
     language = 'clojure'
     language_version = '0.1'
     language_info = {
-        'name': 'Basilisp',
+        'name': 'clojure',
         'codemirror-mode': "clojure",
-        'mimetype': 'text/plain',
+        'mimetype': 'text/x-clojure',
         'file_extension': '.lpy',
     }
-    banner = "Echo kernel - as useful as a parrot"
+    banner = "Basilisp: a Clojure-compatible(-ish) Lisp dialect in Python"
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):

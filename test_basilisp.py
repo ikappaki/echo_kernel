@@ -8,7 +8,7 @@ import unittest
 import jupyter_kernel_test as jkt
 
 
-class EchoKernelTests(jkt.KernelTests):
+class BasilispKernelTests(jkt.KernelTests):
 
     # REQUIRED
 
@@ -16,13 +16,13 @@ class EchoKernelTests(jkt.KernelTests):
     # this is the normally the name of the directory containing the
     # kernel.json file - you should be able to do
     # `jupyter console --kernel KERNEL_NAME`
-    kernel_name = "echo"
+    kernel_name = "basilisp"
 
     # Everything else is OPTIONAL
 
     # the name of the language the kernel executes
     # checked against language_info.name in kernel_info_reply
-    language_name = "Basilisp"
+    language_name = "clojure"
 
     # the normal file extension (including the leading dot) for this language
     # checked against language_info.file_extension in kernel_info_reply

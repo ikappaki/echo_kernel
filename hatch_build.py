@@ -13,8 +13,8 @@ from jupyter_client.kernelspec import KernelSpecManager
 from tempfile import TemporaryDirectory
 
 kernel_json = {
-    "argv": [sys.executable, "-m", "echo_kernel", "-f", "{connection_file}"],
-    "display_name": "Echo",
+    "argv": [sys.executable, "-m", "basilisp_kernel", "-f", "{connection_file}"],
+    "display_name": "Basilisp",
     "language": "text",
 }
 
@@ -38,5 +38,5 @@ class CustomHook(BuildHookInterface):
                 except FileNotFoundError:
                     print("Custom logo files not found. Default logos will be used.")
 
-            KernelSpecManager().install_kernel_spec(td, 'echo', user=False, prefix=prefix)
+            KernelSpecManager().install_kernel_spec(td, 'basilisp', user=False, prefix=prefix)
 
