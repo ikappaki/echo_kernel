@@ -29,8 +29,24 @@ class BasilispKernelTests(jkt.KernelTests):
     file_extension = ".lpy"
 
     # code which should write the exact string `hello, world` to STDOUT
-    code_hello_world = "\"hello, world\""
+    code_hello_world = "(println \"hello, world\")"
 
+    # code which should cause (any) text to be written to STDERR
+    code_stderr = "(binding [*out* *err*] (println \"hi\"))"
+
+    # samples for the autocompletion functionality
+    # for each dictionary, `text` is the input to try and complete, and
+    # `matches` the list of all complete matching strings which should be found
+    completion_samples = [
+        {
+            "text": "[abc print",
+            "matches": {"printf", "println", "println-str", "print", "print-str"},
+        },
+    ]
+
+    # code which should generate a (user-level) error in the kernel, and send
+    # a traceback to the client
+    code_generate_error = "(throw (Exception. \"based\"))"
 
 if __name__ == "__main__":
     unittest.main()

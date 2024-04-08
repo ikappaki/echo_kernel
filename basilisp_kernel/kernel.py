@@ -1,12 +1,12 @@
 from ipykernel.kernelbase import Kernel
 
-import basilisp
 from basilisp import main as basilisp
 from basilisp.lang import compiler as compiler
 from basilisp.lang import reader as reader
 from basilisp.lang import runtime as runtime
 from basilisp.lang import symbol as sym
 from typing import Any, Callable, Optional, Sequence, Type
+import re
 import traceback
 
 from io import StringIO
@@ -25,6 +25,8 @@ ctx = compiler.CompilerContext(filename="basilisp-kernel", opts=opts)
 eof = object()
 ns = runtime.Namespace.get_or_create(runtime.CORE_NS_SYM)
 
+_DELIMITED_WORD_PATTERN = re.compile(r"[\[\](){\}\s]+")
+
 class BasilispKernel(Kernel):
     implementation = 'basilisp_kernel'
     implementation_version = '1.0'
@@ -38,6 +40,29 @@ class BasilispKernel(Kernel):
     }
     banner = "Basilisp: a Clojure-compatible(-ish) Lisp dialect in Python"
 
+    def do_complete(self, code, cursor_pos):
+        if cursor_pos > len(code):
+            cursor_pos = len(code)
+
+        words = re.split(_DELIMITED_WORD_PATTERN, code)
+
+        last_word = ""
+        current_length = 0
+        for word in words:
+            current_length += len(word)
+            if current_length > cursor_pos:
+                break
+            last_word = word
+
+        word_before_cursor = last_word
+        completions = runtime.repl_completions(word_before_cursor) or ()
+        return {"status" : "ok",
+                "matches" : completions,
+                "cursor_start" : cursor_pos,
+                "cursor_end" : cursor_pos,
+                "metadata" : dict()
+                }
+
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         bas_out = StringIO()
@@ -49,6 +74,7 @@ class BasilispKernel(Kernel):
                     runtime.Var.find_safe(sym.symbol("*err*", ns=runtime.CORE_NS)) : bas_err
             }):
                 result = eval_str(code, ctx, ns, eof)
+                result = "nil" if result is None else result
                 if not silent:
                     out = f"{bas_out.getvalue()}\n{str(result)}" if bas_out.tell() > 0 else str(result)
                     stream_content = {'name': 'stdout', 'text': out}
@@ -73,13 +99,12 @@ class BasilispKernel(Kernel):
         #     exc = format_exception(e, Exception, e.__traceback__)
 
         except Exception as e:
-            stream_content = {'name': 'stderr', 'text': traceback.format_exc()}
-            self.send_response(self.iopub_socket, 'stream', stream_content)
-            ret = {'status': 'error',
-                   'ename': 'exception',
-                   'evalue': str(e),
-                   'traceback': []
+            error_content = {'status': 'error',
+                   'ename' : e.__class__.__name__,
+                   'evalue' : str(e),
+                   'traceback': [traceback.format_exc()]
                    }
-
+            self.send_response(self.iopub_socket, "error", error_content)
+            ret = error_content
 
         return ret
