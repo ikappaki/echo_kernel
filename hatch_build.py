@@ -15,7 +15,7 @@ from tempfile import TemporaryDirectory
 kernel_json = {
     "argv": [sys.executable, "-m", "basilisp_kernel", "-f", "{connection_file}"],
     "display_name": "Basilisp",
-    "language": "text",
+    "language": "clojure",
 }
 
 class CustomHook(BuildHookInterface):
