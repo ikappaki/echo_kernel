@@ -48,5 +48,33 @@ class BasilispKernelTests(jkt.KernelTests):
     # a traceback to the client
     code_generate_error = "(throw (Exception. \"based\"))"
 
+    # a statement or block of code which generates a result (which is shown
+    # as Out[n] instead of just something printed to stdout)
+    # running each `code` should cause `result` to be displayed (note that the
+    # result here will always be a string representation of whatever the actual
+    # result type is - be careful of string formatting)
+    code_execute_result = [
+        {"code": "(+ 1 2 3)", "result": "6"},
+        {"code": "(map #(* % %) (range 1 4))", "result": "(1 4 9)"},
+    ]
+
+    # code which generates some sort of rich output
+    # for each `code` input a single rich display object with the specified
+    # `mime` type should be sent to the frontend
+    # note that this expects a `display_data` message rather than
+    # `execute_result`; this test might be a little too inflexible in some cases
+    # code_display_data = [
+    #     {
+    #         "code": "(import [IPython.display :as d]) (println (d/display (d/HTML \"<b>A</b>\")))",
+    #         # "code": "from IPython.display import HTML, display; display(HTML('<b>test</b>'))",
+    #         "mime": "text/html",
+    #     },
+        # {
+        #     "code": "from IPython.display import Math, display; display(Math('\\frac{1}{2}'))",
+        #     "mime": "text/latex",
+        # },
+    # ]
+
+
 if __name__ == "__main__":
     unittest.main()

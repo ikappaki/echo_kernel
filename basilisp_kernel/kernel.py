@@ -1,6 +1,7 @@
 from ipykernel.kernelbase import Kernel
 
 from basilisp import main as basilisp
+from basilisp import cli
 from basilisp.lang import compiler as compiler
 from basilisp.lang import reader as reader
 from basilisp.lang import runtime as runtime
@@ -11,19 +12,14 @@ import traceback
 
 from io import StringIO
 
-def eval_str(s: str, ctx: compiler.CompilerContext, ns: runtime.Namespace, eof: Any):
-    """Evaluate the forms in a string into a Python module AST node."""
-    last = eof
-    for form in reader.read_str(s, resolver=runtime.resolve_alias, eof=eof):
-        assert not isinstance(form, reader.ReaderConditional)
-        last = compiler.compile_and_exec_form(form, ctx, ns)
-    return last
-
 opts = {}
 basilisp.init(opts)
 ctx = compiler.CompilerContext(filename="basilisp-kernel", opts=opts)
 eof = object()
-ns = runtime.Namespace.get_or_create(runtime.CORE_NS_SYM)
+
+user_ns = runtime.Namespace.get_or_create(sym.symbol("user"))
+core_ns = runtime.Namespace.get(runtime.CORE_NS_SYM)
+cli.eval_str("(ns user (:require clojure.core))", ctx, core_ns, eof)
 
 _DELIMITED_WORD_PATTERN = re.compile(r"[\[\](){\}\s]+")
 
@@ -73,20 +69,24 @@ class BasilispKernel(Kernel):
                     runtime.Var.find_safe(sym.symbol("*out*", ns=runtime.CORE_NS)) : bas_out,
                     runtime.Var.find_safe(sym.symbol("*err*", ns=runtime.CORE_NS)) : bas_err
             }):
-                result = eval_str(code, ctx, ns, eof)
+                result = cli.eval_str(code, ctx, user_ns, eof)
                 result = "nil" if result is None else result
                 if not silent:
-                    out = f"{bas_out.getvalue()}\n{str(result)}" if bas_out.tell() > 0 else str(result)
-                    stream_content = {'name': 'stdout', 'text': out}
-                    self.send_response(self.iopub_socket, 'stream', stream_content)
+                    er_content = {'execution_count': self.execution_count,
+                                  'data' : {"text/plain" : str(result)},
+                                  'metadata' : dict()}
+                    self.send_response(self.iopub_socket, 'execute_result', er_content)
+                    if bas_out.tell() > 0:
+                        stream_content = {'name': 'stdout', 'text': bas_out.getvalue()}
+                        self.send_response(self.iopub_socket, 'stream', stream_content)
                 serr = bas_err.getvalue() 
                 if bas_err.tell() > 0:
                     stream_content = {'name': 'stderr', 'text': bas_err.getvalue()}
                     self.send_response(self.iopub_socket, 'stream', stream_content)
-
             ret = {'status': 'ok',
                    # The base class increments the execution count
                    'execution_count': self.execution_count,
+                   'data' : {"text/plain" : str(result)},
                    'payload': [],
                    'user_expressions': {},
                    }
