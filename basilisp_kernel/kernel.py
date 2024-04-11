@@ -72,17 +72,32 @@ class BasilispKernel(Kernel):
                 result = cli.eval_str(code, ctx, user_ns, eof)
                 result = "nil" if result is None else result
                 if not silent:
-                    er_content = {'execution_count': self.execution_count,
-                                  'data' : {"text/plain" : str(result)},
-                                  'metadata' : dict()}
-                    self.send_response(self.iopub_socket, 'execute_result', er_content)
+                    result_repr_html = getattr(result, "_repr_html_", None)
+                    result_repr_png = getattr(result, "_repr_png_", None)
+                    if callable(result_repr_html):
+                        display_content = {'execution_count': self.execution_count,
+                                           'data' : {"text/html" : result_repr_html()},
+                                           'metadata' : dict()}
+                        self.send_response(self.iopub_socket, 'display_data', display_content)
+                    elif callable(result_repr_png):
+                        display_content = {'execution_count': self.execution_count,
+                                           'data' : {"image/png" : result_repr_png()},
+                                           'metadata' : dict()}
+                        self.send_response(self.iopub_socket, 'display_data', display_content)
+                    else:
+                        er_content = {'execution_count': self.execution_count,
+                                      'data' : {"text/plain" : str(result)},
+                                      'metadata' : dict()}
+                        self.send_response(self.iopub_socket, 'execute_result', er_content)
+
                     if bas_out.tell() > 0:
                         stream_content = {'name': 'stdout', 'text': bas_out.getvalue()}
                         self.send_response(self.iopub_socket, 'stream', stream_content)
-                serr = bas_err.getvalue() 
-                if bas_err.tell() > 0:
-                    stream_content = {'name': 'stderr', 'text': bas_err.getvalue()}
-                    self.send_response(self.iopub_socket, 'stream', stream_content)
+
+                    serr = bas_err.getvalue()
+                    if bas_err.tell() > 0:
+                        stream_content = {'name': 'stderr', 'text': bas_err.getvalue()}
+                        self.send_response(self.iopub_socket, 'stream', stream_content)
             ret = {'status': 'ok',
                    # The base class increments the execution count
                    'execution_count': self.execution_count,
