@@ -1,4 +1,5 @@
 from ipykernel.kernelbase import Kernel
+from ipykernel.ipkernel import IPythonKernel
 
 from basilisp import main as basilisp
 from basilisp import cli
@@ -8,7 +9,7 @@ from basilisp.lang import runtime as runtime
 from basilisp.lang import symbol as sym
 from typing import Any, Callable, Optional, Sequence, Type
 import re
-import traceback
+import sys
 
 from io import StringIO
 
@@ -23,7 +24,31 @@ cli.eval_str("(ns user (:require clojure.core))", ctx, core_ns, eof)
 
 _DELIMITED_WORD_PATTERN = re.compile(r"[\[\](){\}\s]+")
 
-class BasilispKernel(Kernel):
+def do_execute(code):
+    bas_out = StringIO()
+    bas_err = StringIO()
+    ret = None
+    with runtime.bindings({
+            runtime.Var.find_safe(sym.symbol("*out*", ns=runtime.CORE_NS)) : bas_out,
+            runtime.Var.find_safe(sym.symbol("*err*", ns=runtime.CORE_NS)) : bas_err
+    }):
+        result = None
+        try:
+            result = cli.eval_str(code, ctx, user_ns, eof)
+            if bas_err.tell() > 0:
+                print(bas_err.getvalue(), file=sys.stderr)
+            if bas_out.tell() > 0:
+                print(bas_out.getvalue())
+        except:
+            if bas_err.tell() > 0:
+                print(bas_err.getvalue(), file=sys.stderr)
+            if bas_out.tell() > 0:
+                print(bas_out.getvalue())
+            raise
+
+        return result
+
+class BasilispKernel(IPythonKernel):
     implementation = 'basilisp_kernel'
     implementation_version = '1.0'
     language = 'clojure'
@@ -35,6 +60,10 @@ class BasilispKernel(Kernel):
         'file_extension': '.lpy',
     }
     banner = "Basilisp: a Clojure-compatible(-ish) Lisp dialect in Python"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.imported = False
 
     def do_complete(self, code, cursor_pos):
         if cursor_pos > len(code):
@@ -61,65 +90,10 @@ class BasilispKernel(Kernel):
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
-        bas_out = StringIO()
-        bas_err = StringIO()
-        ret = None
-        try:
-            with runtime.bindings({
-                    runtime.Var.find_safe(sym.symbol("*out*", ns=runtime.CORE_NS)) : bas_out,
-                    runtime.Var.find_safe(sym.symbol("*err*", ns=runtime.CORE_NS)) : bas_err
-            }):
-                result = cli.eval_str(code, ctx, user_ns, eof)
-                result = "nil" if result is None else result
-                if not silent:
-                    result_repr_html = getattr(result, "_repr_html_", None)
-                    result_repr_png = getattr(result, "_repr_png_", None)
-                    if callable(result_repr_html):
-                        display_content = {'execution_count': self.execution_count,
-                                           'data' : {"text/html" : result_repr_html()},
-                                           'metadata' : dict()}
-                        self.send_response(self.iopub_socket, 'display_data', display_content)
-                    elif callable(result_repr_png):
-                        display_content = {'execution_count': self.execution_count,
-                                           'data' : {"image/png" : result_repr_png()},
-                                           'metadata' : dict()}
-                        self.send_response(self.iopub_socket, 'display_data', display_content)
-                    else:
-                        er_content = {'execution_count': self.execution_count,
-                                      'data' : {"text/plain" : str(result)},
-                                      'metadata' : dict()}
-                        self.send_response(self.iopub_socket, 'execute_result', er_content)
-
-                    if bas_out.tell() > 0:
-                        stream_content = {'name': 'stdout', 'text': bas_out.getvalue()}
-                        self.send_response(self.iopub_socket, 'stream', stream_content)
-
-                    serr = bas_err.getvalue()
-                    if bas_err.tell() > 0:
-                        stream_content = {'name': 'stderr', 'text': bas_err.getvalue()}
-                        self.send_response(self.iopub_socket, 'stream', stream_content)
-            ret = {'status': 'ok',
-                   # The base class increments the execution count
-                   'execution_count': self.execution_count,
-                   'data' : {"text/plain" : str(result)},
-                   'payload': [],
-                   'user_expressions': {},
-                   }
-
-        # except reader.SyntaxError as e:
-        #     exc = format_exception(e, reader.SyntaxError, e.__traceback__)
-        # except compiler.CompilerException as e:
-        #     exc = format_exception(e, compiler.CompilerException, e.__traceback__)
-        # except Exception as e:  # pylint: disable=broad-exception-caught
-        #     exc = format_exception(e, Exception, e.__traceback__)
-
-        except Exception as e:
-            error_content = {'status': 'error',
-                   'ename' : e.__class__.__name__,
-                   'evalue' : str(e),
-                   'traceback': [traceback.format_exc()]
-                   }
-            self.send_response(self.iopub_socket, "error", error_content)
-            ret = error_content
-
-        return ret
+        bas_code = f'basilisp_kernel.kernel.do_execute({repr(code)})'
+        if not self.imported:
+            bas_code = f'import basilisp_kernel\n{bas_code}'
+            self.imported = True
+        return super().do_execute(code=bas_code, silent=silent, store_history=store_history,
+                                  user_expressions=user_expressions, allow_stdin=allow_stdin)
+    
